@@ -21,7 +21,7 @@
 #  index_reports_on_dataset_id  (dataset_id)
 #
 class ReportSerializer < ApplicationSerializer
-  attributes :error, :exit_status, :status, :stderr, :stdout, :name, :html_url, :machine_code_detect_status
+  attributes :error, :exit_status, :status, :stderr, :stdout, :name, :html_url, :machine_code_detect_status, :codeql_status
 
   has_one :dataset
   has_many :report_file

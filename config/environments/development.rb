@@ -3,6 +3,8 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
+  config.hosts = nil
+
   config.front_end_base_url = ENV.fetch('DOLOS_FRONT_END_URL') { 'http://localhost:8080' }
 
   config.jwt_key = ENV.fetch('JWT_KEY') { 'bkcs' }

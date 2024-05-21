@@ -30,5 +30,7 @@ module DolosApi
     # Delayed::Job is pretty much the only MySQL-compatible job runner
     # and has been running smoothly with Dodona for many years
     config.active_job.queue_adapter = :delayed_job
+
+    config.autoload_paths += %W(#{config.root}/lib)
   end
 end

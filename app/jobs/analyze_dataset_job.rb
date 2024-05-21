@@ -1,4 +1,5 @@
 require 'docker'
+require './lib/utility/language_picker'
 
 # Creates a report by analyzign an input dataset using the Dolos dockerfile
 #
@@ -12,6 +13,7 @@ class AnalyzeDatasetJob < ApplicationJob
   TIMEOUT = 60.seconds
   MEMORY_LIMIT = 2_000_000_000
   OUTPUT_LIMIT = 65_000
+  LANGUAGE_PICKER = LanguagePicker.new
 
   def perform(report, **options)
     @report  = report
@@ -21,10 +23,18 @@ class AnalyzeDatasetJob < ApplicationJob
     @mac = RUBY_PLATFORM.include?('darwin')
 
     prepare
-    push_to_external
+    detected_language = detect_language
+    if detected_language.nil?
+      @report.update(status: 'failed', error: 'cannot detect language')
+      return
+    end
+
+    push_to_external(detected_language)
     @dataset.zipfile.open do |zipfile_tmp|
       execute(zipfile_tmp.path)
     end
+
+    @dataset.update(programming_language: detected_language.name)
   rescue StandardError => e
     @report.update(
       status: 'error',
@@ -43,11 +53,24 @@ class AnalyzeDatasetJob < ApplicationJob
     @output_dir = @mount.join(OUTPUT_DIRNAME)
   end
 
-  def push_to_external
+  def detect_language
+    file_list = []
+    Zip::File.open(@dataset.zipfile_path) do |zip_file|
+      zip_file.each do |f|
+        file_list.push(f.name)
+      end
+    end
+
+    LANGUAGE_PICKER.detect_language(file_list)
+  end
+
+  def push_to_external(language)
     file_list = []
     unzip_path = File.join(Rails.application.config.unzip_location, @dataset.id.to_s)
     Zip::File.open(@dataset.zipfile_path) do |zip_file|
       zip_file.each do |f|
+        next unless LANGUAGE_PICKER.match_extension(language, File.extname(f.name))
+
         f_path = File.join(unzip_path, f.name)
         FileUtils.mkdir_p(File.dirname(f_path))
         zip_file.extract(f, f_path) unless File.exist?(f_path)
@@ -65,7 +88,8 @@ class AnalyzeDatasetJob < ApplicationJob
       report_id: @report.id.to_s,
       folder_path: unzip_path,
       dataset_id: @dataset.id.to_s,
-      file_list: file_list
+      file_list: file_list,
+      programming_language: language.name
     }.to_json # SOME JSON DATA e.g {msg: 'Why'}.to_json
 
     response = http.request(request)
@@ -82,6 +106,7 @@ class AnalyzeDatasetJob < ApplicationJob
       '/input.zip'
     ]
     cmd += ['-l', @dataset.programming_language] if @dataset.programming_language.present?
+    Rails.logger.debug cmd
     docker_options = {
       Cmd: cmd,
       User: Process.euid.to_s,

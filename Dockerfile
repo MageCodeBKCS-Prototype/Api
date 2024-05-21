@@ -13,7 +13,8 @@ ADD db/ /dolos/db
 ADD lib/ /dolos/lib
 ADD public/ /dolos/public
 ADD test/ /dolos/test
-
+ADD .env /dolos/.env
+ADD .env.development /dolos/.env.development
 EXPOSE 3000
 
 # Configure the main process to run when running the image

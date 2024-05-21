@@ -31,6 +31,7 @@ class Dataset < ApplicationRecord
             size: { less_than: MAX_ZIP_SIZE }
 
   validates :name, presence: true, length: { minimum: 3, maximum: 255 }
+  # validates :programming_language, presence: true, length: { minimum: 1, maximum: 255 }
 
   before_validation :ensure_name
 
